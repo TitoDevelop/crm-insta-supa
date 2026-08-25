@@ -1,0 +1,186 @@
+<div class="shell">
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">PROSPECCIÓN · SUPABASE</div>
+      <h1>CRM Empresas</h1>
+      <p>Los contactos, estados y notas se guardan ahora en Supabase.</p>
+    </div>
+
+    <div class="actions">
+      <button class="btn" (click)="recargar()" [disabled]="cargando()">
+        {{ cargando() ? 'Cargando…' : 'Recargar' }}
+      </button>
+
+      <label class="btn primary" [class.disabled]="guardando()">
+        Importar CSV
+        <input
+          type="file"
+          accept=".csv,text/csv"
+          hidden
+          [disabled]="guardando()"
+          (change)="importarCsv($event)"
+        >
+      </label>
+
+      <button class="btn" (click)="exportarCsv()">Exportar</button>
+    </div>
+  </header>
+
+  @if (error()) {
+    <div class="alert error">
+      <strong>Error:</strong> {{ error() }}
+    </div>
+  }
+
+  @if (mensajeSistema()) {
+    <div class="alert success-alert">
+      {{ mensajeSistema() }}
+    </div>
+  }
+
+  <section class="stats">
+    <div class="stat">
+      <strong>{{ empresas().length }}</strong>
+      <span>Total</span>
+    </div>
+    <div class="stat">
+      <strong>{{ pendientes() }}</strong>
+      <span>Pendientes</span>
+    </div>
+    <div class="stat">
+      <strong>{{ contactadasHoy() }}</strong>
+      <span>Contactadas hoy</span>
+    </div>
+  </section>
+
+  <section class="toolbar">
+    <input
+      class="search"
+      placeholder="Buscar empresa, &#64;usuario o sector…"
+      [ngModel]="busqueda()"
+      (ngModelChange)="busqueda.set($event)"
+    >
+
+    <select
+      [ngModel]="filtro()"
+      (ngModelChange)="filtro.set($event); actualId.set(null)"
+    >
+      <option value="TODAS">Todos los estados</option>
+      @for (estado of estados; track estado) {
+        <option [value]="estado">{{ estado }}</option>
+      }
+    </select>
+  </section>
+
+  <main class="layout">
+    <aside class="list">
+      @if (cargando()) {
+        <div class="empty-mini">Cargando empresas de Supabase…</div>
+      } @else {
+        @for (e of filtradas(); track e.id) {
+          <button
+            class="company"
+            [class.active]="actual()?.id === e.id"
+            (click)="seleccionar(e.id)"
+          >
+            <div>
+              <strong>{{ e.empresa }}</strong>
+              <span>&#64;{{ e.instagram || 'sin_usuario' }}</span>
+            </div>
+
+            <span class="badge" [attr.data-status]="e.estado">
+              {{ e.estado }}
+            </span>
+          </button>
+        } @empty {
+          <div class="empty-mini">
+            No hay empresas con este filtro.
+          </div>
+        }
+      }
+    </aside>
+
+    <section class="card">
+      @if (actual(); as e) {
+        <div class="card-head">
+          <div>
+            <span class="sector">{{ e.sector || 'Sin sector' }}</span>
+            <h2>{{ e.empresa }}</h2>
+
+            @if (e.instagram) {
+              <a
+                [href]="'https://instagram.com/' + e.instagram"
+                target="_blank"
+                rel="noopener"
+              >
+                &#64;{{ e.instagram }}
+              </a>
+            }
+          </div>
+
+          <select
+            [ngModel]="e.estado"
+            [disabled]="guardando()"
+            (ngModelChange)="cambiarEstado(e, $event)"
+          >
+            @for (estado of estados; track estado) {
+              <option [value]="estado">{{ estado }}</option>
+            }
+          </select>
+        </div>
+
+        <label>Mensaje</label>
+        <textarea rows="8" [ngModel]="e.mensaje || ''" readonly></textarea>
+
+        <div class="main-actions">
+          <button class="btn" (click)="copiarMensaje()" [disabled]="!e.mensaje">
+            Copiar mensaje
+          </button>
+
+          <button class="btn" (click)="abrirInstagram()" [disabled]="!e.instagram">
+            Abrir Instagram
+          </button>
+
+          <button
+            class="btn success"
+            (click)="marcarContactadaYSiguiente()"
+            [disabled]="guardando()"
+          >
+            ✓ Contactada + siguiente
+          </button>
+        </div>
+
+        <label>Notas</label>
+        <textarea
+          rows="4"
+          placeholder="Qué respondió, propuesta, seguimiento..."
+          [ngModel]="e.notas || ''"
+          [disabled]="guardando()"
+          (change)="guardarNotas(e, $any($event.target).value)"
+        ></textarea>
+
+        <div class="navigation">
+          <button class="btn ghost" (click)="anterior()">← Anterior</button>
+          <button class="btn ghost" (click)="siguiente()">Siguiente →</button>
+        </div>
+
+        @if (guardando()) {
+          <div class="saving">Guardando en Supabase…</div>
+        }
+      } @else {
+        <div class="empty">
+          <div class="empty-icon">☁</div>
+          <h2>No hay empresas</h2>
+          <p>Importa un CSV y se guardará directamente en Supabase.</p>
+        </div>
+      }
+    </section>
+  </main>
+
+  <footer>
+    <span>Base de datos: Supabase PostgreSQL.</span>
+    <button class="danger-link" (click)="borrarTodo()" [disabled]="guardando()">
+      Borrar todas las empresas
+    </button>
+  </footer>
+</div>
